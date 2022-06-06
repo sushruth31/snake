@@ -1,23 +1,20 @@
 import { useEffect, useState } from "react"
 import useInterval from "./useinterval"
 
-const NUM_ROWS = 16
-const NUM_COLS = 16
-
-const Directions = {
-  LEFT: "left",
-  RIGHT: "right",
-  DOWN: "down",
-  UP: "up",
-}
+const GRID_SIZE = 16
 
 function App() {
   //after each render head becomes next and everything else shifts in current direction.
-  let [direction, setDirection] = useState(Directions.RIGHT)
+  let moveRight = (r, c) => [r, c + 1]
+  let moveLeft = (r, c) => [r, c - 1]
+  let moveDown = (r, c) => [r + 1, c]
+  let moveUp = (r, c) => [r - 1, c]
+
+  let [dirQueue, setDirQueue] = useState(() => [moveRight])
   let [snake, setSnake] = useState([
-    [5, 12],
-    [5, 13],
-    [5, 14],
+    [4, 4],
+    [5, 4],
+    [5, 5],
   ])
 
   function renderSnake(rowI, colI) {
@@ -26,85 +23,41 @@ function App() {
       .find(([_, col]) => colI === col)
   }
 
-  function moveRight() {
-    let changeDirection,
-      newSnake = []
-    for (let i = 0; i < snake.length; i++) {
-      let [r, c] = snake[i]
-      if (c === NUM_COLS - 1) {
-        changeDirection = Directions.DOWN
-        newSnake.push([r + 1, c])
-      } else {
-        newSnake.push([r, c + 1])
-      }
+  console.log(dirQueue)
+
+  function stepSnake() {
+    let direction
+    if (!dirQueue.length) {
+      direction = moveRight
+    } else {
+      direction = dirQueue[0]
     }
-    if (changeDirection) {
-      setDirection(changeDirection)
+
+    let snakeCopy = [...snake]
+    snakeCopy.shift()
+    //create new head
+    let prevHead = snake[snake.length - 1]
+    //change direction if snake head is on borders
+    if (prevHead[1] === GRID_SIZE - 1) {
+      return setDirQueue([moveDown])
     }
-    setSnake(newSnake)
+    let newHead = direction(...prevHead)
+    snakeCopy.push(newHead)
+    setSnake(snakeCopy)
   }
 
-  function moveLeft() {
-    setSnake(p => p.map(([row, col]) => [row, col - 1]))
-  }
-
-  function moveDown() {
-    let changeDirection,
-      newSnake = []
-    for (let i = 0; i < snake.length; i++) {
-      let [r, c] = snake[i]
-      if (c !== NUM_COLS - 1) {
-        changeDirection = Directions.DOWN
-        newSnake.push([r, c + 1])
-      } else {
-        newSnake.push([r + 1, c])
-      }
-    }
-    if (changeDirection) {
-      setDirection(changeDirection)
-    }
-    setSnake(newSnake)
-  }
-
-  function moveUp() {
-    setSnake(p => p.map(([row, col]) => [row - 1, col]))
-  }
-
-  function growSnake() {
-    setSnake(p => {
-      let snakeCopy = [...p]
-      let [firstRow, firstCol] = snakeCopy[0]
-      let newEl =
-        direction === Directions.DOWN || direction === Directions.UP
-          ? [firstRow - 1, firstCol]
-          : [firstRow, firstCol - 1]
-      snakeCopy.unshift(newEl)
-      return snakeCopy
-    })
-  }
-
-  function moveSnake() {
-    switch (direction) {
-      case Directions.RIGHT:
-        return moveRight()
-      case Directions.DOWN:
-        return moveDown()
-    }
-  }
-
-  useInterval(moveSnake, 500, [snake, direction])
+  //useInterval(stepSnake, 200, [snake, dirQueue])
 
   return (
     <div className="p-3">
       <div className="w-full flex item-center justify-center mb-10">
         <div className="font-bold">Snake Game</div>
-        <div>{direction}</div>
       </div>
 
       <div className="flex w-full items-center flex-col justify-center">
-        {Array.from(Array(NUM_ROWS)).map((_, rowI) => (
+        {Array.from(Array(GRID_SIZE)).map((_, rowI) => (
           <div key={rowI} className="flex w-[80%] h-10 ">
-            {Array.from(Array(NUM_COLS)).map((_, colI) => (
+            {Array.from(Array(GRID_SIZE)).map((_, colI) => (
               <div
                 key={colI}
                 className={
