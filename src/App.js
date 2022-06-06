@@ -1,13 +1,26 @@
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import useEventListener from "./useEventListener"
 import useInterval from "./useinterval"
 
-const GRID_SIZE = 16
+const NUM_ROWS = 16
+const NUM_COLS = 16
 
-function App() {
+const Outcomes = {
+  win: "win",
+  lose: "lose",
+}
+
+let capFirstCase = str => str[0].toUpperCase() + str.slice(1).toLowerCase()
+
+export default function App() {
   //after each render head becomes next and everything else shifts in current direction.
-  let moveRight = (r, c) => [r, c + 1]
-  let moveLeft = (r, c) => [r, c - 1]
-  let moveDown = (r, c) => [r + 1, c]
+  let moveRight = useCallback((r, c) => [r, c + 1], [])
+  let moveLeft = useCallback((r, c) => [r, c - 1], [])
+  let moveDown = useCallback((r, c) => [r + 1, c], [])
+  let moveUp = useCallback((r, c) => [r - 1, c], [])
+  let [delay, setDelay] = useState(200)
+  let screenRef = useRef(null)
+  let [gameOver, setGameOver] = useState(false)
   let [dirQueue, setDirQueue] = useState(() => [moveRight])
   let prevDir = useRef(dirQueue[0])
   let [snake, setSnake] = useState([
@@ -15,6 +28,57 @@ function App() {
     [5, 4],
     [5, 5],
   ])
+
+  let keyMap = {
+    arrowdown: moveDown,
+    arrowright: moveRight,
+    arrowleft: moveLeft,
+    arrowup: moveUp,
+  }
+
+  useInterval(stepSnake, delay, [snake, dirQueue])
+
+  function stopGame(outcome) {
+    setDelay(null)
+    setGameOver({ outcome })
+  }
+
+  function isInSnake(r, c) {}
+
+  useEffect(() => {
+    //snake should not touch edges or itself
+    let [r, c] = snake[snake.length - 1]
+    if (
+      c === NUM_COLS - 1 ||
+      r === 0 ||
+      r === NUM_ROWS - 1 ||
+      c === 0 ||
+      isInSnake(r, c)
+    ) {
+      stopGame(Outcomes.lose)
+    }
+  }, [snake])
+
+  useEventListener(
+    "keydown",
+    gameOver?.outcome
+      ? () => {}
+      : e => {
+          e.preventDefault()
+          let key = e.key.toLowerCase()
+          let dir = keyMap[key]
+          if (
+            key !== "arrowdown" &&
+            key !== "arrowright" &&
+            key !== "arrowleft" &&
+            key !== "arrowup"
+          ) {
+            return
+          }
+          if (prevDir.current === dir) return
+          setDirQueue(p => [dir, ...p])
+        }
+  )
 
   useEffect(() => {
     if (dirQueue.length) {
@@ -34,9 +98,10 @@ function App() {
     //get new direction
     if (!dirQueue.length) {
       direction = prevDir.current
+      setDirQueue(p => p.slice(1))
     } else {
       //remove first dir from queue
-      setDirQueue(p => p.slice(1))
+
       direction = dirQueue[0]
     }
     snakeCopy.shift()
@@ -47,18 +112,31 @@ function App() {
     setSnake(snakeCopy)
   }
 
-  useInterval(stepSnake, 200, [snake, dirQueue])
+  let gridClassName =
+    gameOver?.outcome === "win"
+      ? "flex items-center flex-col justify-center border-2 border-green-500"
+      : gameOver?.outcome
+      ? "flex items-center flex-col justify-center border-2 border-red-500"
+      : "flex items-center flex-col justify-center p-4 "
 
   return (
-    <div className="p-3">
-      <div className="w-full flex item-center justify-center mb-10">
+    <div
+      onBlur={() => screenRef.current.focus()}
+      ref={screenRef}
+      className="py-5 px-32"
+    >
+      <div className="flex flex-col items-center justify-center mb-10">
         <div className="font-bold">Snake Game</div>
+        <div>Score: {snake.length}</div>
+        {gameOver?.outcome && (
+          <div>Game over! You {capFirstCase(gameOver.outcome)} </div>
+        )}
       </div>
 
-      <div className="flex w-full items-center flex-col justify-center">
-        {Array.from(Array(GRID_SIZE)).map((_, rowI) => (
-          <div key={rowI} className="flex w-[80%] h-10 ">
-            {Array.from(Array(GRID_SIZE)).map((_, colI) => (
+      <div className={gridClassName}>
+        {Array.from(Array(NUM_ROWS)).map((_, rowI) => (
+          <div key={rowI} className="flex h-10 w-full">
+            {Array.from(Array(NUM_COLS)).map((_, colI) => (
               <div
                 key={colI}
                 className={
@@ -74,5 +152,3 @@ function App() {
     </div>
   )
 }
-
-export default App
