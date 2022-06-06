@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import useInterval from "./useinterval"
 
 const GRID_SIZE = 16
@@ -8,14 +8,19 @@ function App() {
   let moveRight = (r, c) => [r, c + 1]
   let moveLeft = (r, c) => [r, c - 1]
   let moveDown = (r, c) => [r + 1, c]
-  let moveUp = (r, c) => [r - 1, c]
-
   let [dirQueue, setDirQueue] = useState(() => [moveRight])
+  let prevDir = useRef(dirQueue[0])
   let [snake, setSnake] = useState([
     [4, 4],
     [5, 4],
     [5, 5],
   ])
+
+  useEffect(() => {
+    if (dirQueue.length) {
+      prevDir.current = dirQueue[0]
+    }
+  })
 
   function renderSnake(rowI, colI) {
     return snake
@@ -23,30 +28,26 @@ function App() {
       .find(([_, col]) => colI === col)
   }
 
-  console.log(dirQueue)
-
   function stepSnake() {
-    let direction
+    let snakeCopy = [...snake],
+      direction
+    //get new direction
     if (!dirQueue.length) {
-      direction = moveRight
+      direction = prevDir.current
     } else {
+      //remove first dir from queue
+      setDirQueue(p => p.slice(1))
       direction = dirQueue[0]
     }
-
-    let snakeCopy = [...snake]
     snakeCopy.shift()
     //create new head
     let prevHead = snake[snake.length - 1]
-    //change direction if snake head is on borders
-    if (prevHead[1] === GRID_SIZE - 1) {
-      return setDirQueue([moveDown])
-    }
     let newHead = direction(...prevHead)
     snakeCopy.push(newHead)
     setSnake(snakeCopy)
   }
 
-  //useInterval(stepSnake, 200, [snake, dirQueue])
+  useInterval(stepSnake, 200, [snake, dirQueue])
 
   return (
     <div className="p-3">
