@@ -27,13 +27,15 @@ export default function App() {
     1000
   )
   let [gameOver, setGameOver] = useState(false)
-  let [dirQueue, setDirQueue] = useState(() => [moveRight])
+  let [dirQueue, setDirQueue] = useState([])
   let prevDir = useRef(dirQueue[0])
   let [snake, setSnake] = useState([
-    [4, 4],
+    [5, 3],
     [5, 4],
     [5, 5],
   ])
+
+  let gameStarted = !!(prevDir.current || dirQueue.length)
 
   let keyMap = {
     arrowdown: moveDown,
@@ -135,6 +137,7 @@ export default function App() {
   }
 
   function stepSnake() {
+    if (!gameStarted) return
     let snakeCopy = [...snake]
     let direction = getNewDirection()
 
@@ -154,31 +157,43 @@ export default function App() {
       : "flex items-center flex-col justify-center p-4 "
 
   return (
-    <div className="py-5 px-32">
-      <div className="flex flex-col items-center justify-center mb-10">
-        <div className="font-bold">Snake Game</div>
-        <div>Score: {snake.length}</div>
-        {gameOver?.outcome && (
-          <div>Game over! You {capFirstCase(gameOver.outcome)} </div>
-        )}
-      </div>
-
-      <div className={gridClassName}>
-        {Array.from(Array(NUM_ROWS)).map((_, rowI) => (
-          <div key={rowI} className="flex h-10 w-full">
-            {Array.from(Array(NUM_COLS)).map((_, colI) => (
-              <div
-                key={colI}
-                className={
-                  renderSnake(rowI, colI)
-                    ? "h-full border bg-black border-zinc-400 w-20"
-                    : "h-full border border-zinc-400 w-20 "
-                }
-              ></div>
-            ))}
+    <>
+      {!gameStarted && (
+        <div className="fixed w-screen h-screen flex items-center justify-center bg-[#000000c4]">
+          <div className="text-white font-bold text-xl">
+            Press any arrow key to start
           </div>
-        ))}
+        </div>
+      )}
+      <div className="py-5 px-32">
+        <div className="flex flex-col items-center justify-center mb-10">
+          <div className="font-bold">Snake Game</div>
+          <div>Score: {snake.length}</div>
+          {gameOver?.outcome && (
+            <>
+              <div>Game over! You {capFirstCase(gameOver.outcome)} </div>
+              <button>Play again</button>
+            </>
+          )}
+        </div>
+
+        <div className={gridClassName}>
+          {Array.from(Array(NUM_ROWS)).map((_, rowI) => (
+            <div key={rowI} className="flex h-10 w-full">
+              {Array.from(Array(NUM_COLS)).map((_, colI) => (
+                <div
+                  key={colI}
+                  className={
+                    renderSnake(rowI, colI)
+                      ? "h-full border bg-black border-zinc-400 w-20"
+                      : "h-full border border-zinc-400 w-20 "
+                  }
+                ></div>
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   )
 }
