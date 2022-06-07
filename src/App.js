@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import useEventListener from "./useEventListener"
 import useInterval from "./useinterval"
+import useAudio from "./useaudio"
 
 const NUM_ROWS = 16
 const NUM_COLS = 16
@@ -19,7 +20,10 @@ export default function App() {
   let moveDown = useCallback((r, c) => [r + 1, c], [])
   let moveUp = useCallback((r, c) => [r - 1, c], [])
   let [delay, setDelay] = useState(200)
-  let screenRef = useRef(null)
+  let [playing, toggle] = useAudio(
+    "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    1000
+  )
   let [gameOver, setGameOver] = useState(false)
   let [dirQueue, setDirQueue] = useState(() => [moveRight])
   let prevDir = useRef(dirQueue[0])
@@ -41,9 +45,14 @@ export default function App() {
   function stopGame(outcome) {
     setDelay(null)
     setGameOver({ outcome })
+    toggle()
   }
 
-  function isInSnake(r, c) {}
+  function isInSnake(r, c) {
+    //filter out current head
+    let snakeMap = new Map(snake.slice(0, snake.length - 1))
+    return snakeMap.get(r) === c
+  }
 
   useEffect(() => {
     //snake should not touch edges or itself
@@ -92,18 +101,32 @@ export default function App() {
       .find(([_, col]) => colI === col)
   }
 
-  function stepSnake() {
-    let snakeCopy = [...snake],
-      direction
-    //get new direction
+  function isValidDirection(attempt) {
+    return true
+  }
+
+  function getNewDirection() {
+    let direction
     if (!dirQueue.length) {
       direction = prevDir.current
       setDirQueue(p => p.slice(1))
     } else {
-      //remove first dir from queue
-
-      direction = dirQueue[0]
+      //remove first dir from queue. check if its a valid direction if not try again
+      while (!direction) {
+        let attempt = dirQueue[0]
+        if (isValidDirection(attempt)) {
+          direction = attempt
+        }
+      }
     }
+
+    return direction
+  }
+
+  function stepSnake() {
+    let snakeCopy = [...snake]
+    let direction = getNewDirection()
+
     snakeCopy.shift()
     //create new head
     let prevHead = snake[snake.length - 1]
@@ -120,11 +143,7 @@ export default function App() {
       : "flex items-center flex-col justify-center p-4 "
 
   return (
-    <div
-      onBlur={() => screenRef.current.focus()}
-      ref={screenRef}
-      className="py-5 px-32"
-    >
+    <div className="py-5 px-32">
       <div className="flex flex-col items-center justify-center mb-10">
         <div className="font-bold">Snake Game</div>
         <div>Score: {snake.length}</div>
