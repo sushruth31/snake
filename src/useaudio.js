@@ -16,12 +16,14 @@ export default function useAudio(url, timeout) {
 
   useEffect(() => {
     playing ? play() : audio.pause()
-    return () => clearTimeout(id)
   }, [playing])
 
   useEffect(() => {
     audio.addEventListener("ended", () => setPlaying(false))
-    return () => audio.removeEventListener("ended", () => setPlaying(false))
+    return () => {
+      audio.removeEventListener("ended", () => setPlaying(false))
+      clearTimeout(id)
+    }
   }, [])
 
   return [playing, toggle]

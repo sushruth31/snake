@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import useEventListener from "./useEventListener"
 import useInterval from "./useinterval"
 import useAudio from "./useaudio"
-import { isValidDateValue } from "@testing-library/user-event/dist/utils"
 
 const NUM_ROWS = 16
 const NUM_COLS = 16
@@ -29,11 +28,60 @@ export default function App() {
   let [gameOver, setGameOver] = useState(false)
   let [dirQueue, setDirQueue] = useState([])
   let prevDir = useRef(dirQueue[0])
-  let [snake, setSnake] = useState([
-    [5, 3],
-    [5, 4],
-    [5, 5],
-  ])
+  let [snake, setSnake] = useState([[5, 3]])
+
+  function createFood() {
+    let r = Math.floor(Math.random() * NUM_ROWS)
+    let c = Math.floor(Math.random() * NUM_COLS)
+    if (isInSnake(r, c)) {
+      return createFood()
+    }
+    return [r, c]
+  }
+
+  let [food, setFood] = useState(createFood)
+
+  function growSnake() {
+    let newTail,
+      snakeCopy = [...snake],
+      [r, c] = snakeCopy[0]
+
+    if (snakeCopy.length < 2) {
+      switch (prevDir.current) {
+        case moveRight:
+          newTail = [r, c - 1]
+        case moveLeft:
+          newTail = [r, c + 1]
+        case moveDown:
+          newTail = [r - 1, c]
+        case moveUp:
+          newTail = [r + 1, c]
+      }
+    } else {
+      let [[r1, c1], [r2, c2]] = snakeCopy.slice(0, 2)
+      if (r1 === r2) {
+        //same row
+        if (c1 < c2) {
+          //add to left
+          newTail = [r, c - 1]
+        } else {
+          newTail = [r, c + 1]
+        }
+      } else if (c1 === c2) {
+        //same col
+        if (r1 < r2) {
+          //add top
+          newTail = [r + 1, c]
+        } else {
+          newTail = [r - 1, c]
+        }
+      }
+    }
+    snakeCopy.unshift(newTail)
+    setSnake(snakeCopy)
+    setDelay(p => p - 25)
+    setFood(createFood())
+  }
 
   let gameStarted = !!(prevDir.current || dirQueue.length)
 
@@ -58,6 +106,8 @@ export default function App() {
     return snakeMap.get(r) === c
   }
 
+  let isFood = (r, c) => food[0] === r && food[1] === c
+
   useEffect(() => {
     //snake should not touch edges or itself
     let [r, c] = snake[snake.length - 1]
@@ -69,6 +119,10 @@ export default function App() {
       isInSnake(r, c)
     ) {
       stopGame(Outcomes.lose)
+    }
+
+    if (isFood(r, c)) {
+      growSnake()
     }
   }, [snake])
 
@@ -186,6 +240,8 @@ export default function App() {
                   className={
                     renderSnake(rowI, colI)
                       ? "h-full border bg-black border-zinc-400 w-20"
+                      : isFood(rowI, colI)
+                      ? "h-full border bg-purple-600 border-zinc-400 w-20"
                       : "h-full border border-zinc-400 w-20 "
                   }
                 ></div>
