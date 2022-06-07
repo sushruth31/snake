@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import useEventListener from "./useEventListener"
 import useInterval from "./useinterval"
 import useAudio from "./useaudio"
+import { isValidDateValue } from "@testing-library/user-event/dist/utils"
 
 const NUM_ROWS = 16
 const NUM_COLS = 16
@@ -15,6 +16,7 @@ let capFirstCase = str => str[0].toUpperCase() + str.slice(1).toLowerCase()
 
 export default function App() {
   //after each render head becomes next and everything else shifts in current direction.
+  //memoize these to use the fn reference
   let moveRight = useCallback((r, c) => [r, c + 1], [])
   let moveLeft = useCallback((r, c) => [r, c - 1], [])
   let moveDown = useCallback((r, c) => [r + 1, c], [])
@@ -84,10 +86,28 @@ export default function App() {
           ) {
             return
           }
-          if (prevDir.current === dir) return
+          if (prevDir.current === dir || !isValidDirection(dir)) return
           setDirQueue(p => [dir, ...p])
         }
   )
+
+  function isValidDirection(attempt) {
+    let curDir = prevDir.current
+
+    if (attempt === moveLeft && curDir === moveRight) {
+      return false
+    }
+    if (attempt === moveRight && curDir === moveLeft) {
+      return false
+    }
+    if (attempt === moveUp && curDir === moveDown) {
+      return false
+    }
+    if (attempt === moveDown && curDir === moveUp) {
+      return false
+    }
+    return true
+  }
 
   useEffect(() => {
     if (dirQueue.length) {
@@ -101,25 +121,16 @@ export default function App() {
       .find(([_, col]) => colI === col)
   }
 
-  function isValidDirection(attempt) {
-    return true
-  }
-
   function getNewDirection() {
     let direction
     if (!dirQueue.length) {
       direction = prevDir.current
-      setDirQueue(p => p.slice(1))
     } else {
       //remove first dir from queue. check if its a valid direction if not try again
-      while (!direction) {
-        let attempt = dirQueue[0]
-        if (isValidDirection(attempt)) {
-          direction = attempt
-        }
-      }
+      let attempt = dirQueue[0]
+      direction = attempt
+      setDirQueue(p => p.slice(1))
     }
-
     return direction
   }
 
