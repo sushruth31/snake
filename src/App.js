@@ -110,13 +110,16 @@ export default function App() {
       }
     }
     setFood(createFood())
-    if (pointIsValid(...newTail)) {
+    if ((pointIsValid(...newTail), () => false)) {
+      preventCheck.current = true
       //point is valid so update the snake
       snakeCopy.unshift(newTail)
       setSnake(snakeCopy)
       setDelay(p => p - 25)
     }
   }
+
+  let preventCheck = useRef(false)
 
   let gameStarted = !!(prevDir.current || dirQueue.length)
 
@@ -137,21 +140,28 @@ export default function App() {
 
   function isInSnake(r, c) {
     //filter out current head
-    let snakeMap = new Map(snake.slice(0, snake.length - 1))
+    let snakeMap = new Map([...snake].slice(0, snake.length - 1))
     return snakeMap.get(r) === c
   }
 
   useEffect(() => {
     //snake should not touch edges or itself
-    let [r, c] = snake[snake.length - 1]
-    if (!pointIsValid(r, c) || isInSnake(r, c)) {
-      stopGame(Outcomes.lose)
+    if (preventCheck.current) {
+      preventCheck.current = false
+      return
     }
 
+    let [r, c] = snake[snake.length - 1]
+    if (!pointIsValid(r, c)) {
+      stopGame(Outcomes.lose)
+    }
     if (isFood(r, c)) {
       growSnake()
     }
   }, [snake])
+
+  //debounce keys
+  let keyBlocked = useRef(false)
 
   useEventListener(
     "keydown",
@@ -161,6 +171,7 @@ export default function App() {
           e.preventDefault()
           let key = e.key.toLowerCase()
           let dir = keyMap[key]
+
           if (
             key !== "arrowdown" &&
             key !== "arrowright" &&
@@ -169,8 +180,17 @@ export default function App() {
           ) {
             return
           }
-          if (prevDir.current === dir || !isValidDirection(dir)) return
+          if (
+            prevDir.current === dir ||
+            !isValidDirection(dir) ||
+            keyBlocked.current
+          )
+            return
           setDirQueue(p => [dir, ...p])
+          keyBlocked.current = true
+          setTimeout(() => {
+            keyBlocked.current = false
+          }, 100)
         }
   )
 
