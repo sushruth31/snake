@@ -3,8 +3,8 @@ import useEventListener from "./useEventListener"
 import useInterval from "./useinterval"
 import useAudio from "./useaudio"
 
-const NUM_ROWS = 16
-const NUM_COLS = 16
+const NUM_ROWS = 15
+const NUM_COLS = 15
 
 const Outcomes = {
   win: "win",
@@ -21,18 +21,44 @@ export default function App() {
   let moveDown = useCallback((r, c) => [r + 1, c], [])
   let moveUp = useCallback((r, c) => [r - 1, c], [])
   let [delay, setDelay] = useState(200)
-  let [playing, toggle] = useAudio(
+  let [__, toggle] = useAudio(
     "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
     1000
+  )
+  let [_, keyboardSoundToggle] = useAudio(
+    "https://assets.mixkit.co/sfx/download/mixkit-little-cute-kiss-2192.wav"
   )
   let [gameOver, setGameOver] = useState(false)
   let [dirQueue, setDirQueue] = useState([])
   let prevDir = useRef(dirQueue[0])
-  let [snake, setSnake] = useState([[5, 3]])
+  let [snake, setSnake] = useState(() => createSnake(0))
 
-  function createFood() {
+  let isFood = (r, c) => food[0] === r && food[1] === c
+
+  function createSnake(n) {
+    let a = []
+    let point = randomPoint()
+    a.push(point)
+    for (let i = 0; i < n; ++i) {
+      let [r, c] = point
+      point = [r, c + 1]
+      if (!pointIsValid(...point, () => false)) {
+        console.log(point, "point is invalid")
+        return a
+      }
+      a.push(point)
+    }
+    return a
+  }
+
+  function randomPoint() {
     let r = Math.floor(Math.random() * NUM_ROWS)
     let c = Math.floor(Math.random() * NUM_COLS)
+    return [r, c]
+  }
+
+  function createFood() {
+    let [r, c] = randomPoint()
     if (isInSnake(r, c)) {
       return createFood()
     }
@@ -40,6 +66,12 @@ export default function App() {
   }
 
   let [food, setFood] = useState(createFood)
+
+  function pointIsValid(r, c, checkSnake = isInSnake) {
+    return (
+      r >= 0 && r <= NUM_ROWS && c >= 0 && c <= NUM_COLS && !checkSnake(r, c)
+    )
+  }
 
   function growSnake() {
     let newTail,
@@ -77,10 +109,13 @@ export default function App() {
         }
       }
     }
-    snakeCopy.unshift(newTail)
-    setSnake(snakeCopy)
-    setDelay(p => p - 25)
     setFood(createFood())
+    if (pointIsValid(...newTail)) {
+      //point is valid so update the snake
+      snakeCopy.unshift(newTail)
+      setSnake(snakeCopy)
+      setDelay(p => p - 25)
+    }
   }
 
   let gameStarted = !!(prevDir.current || dirQueue.length)
@@ -106,18 +141,10 @@ export default function App() {
     return snakeMap.get(r) === c
   }
 
-  let isFood = (r, c) => food[0] === r && food[1] === c
-
   useEffect(() => {
     //snake should not touch edges or itself
     let [r, c] = snake[snake.length - 1]
-    if (
-      c === NUM_COLS - 1 ||
-      r === 0 ||
-      r === NUM_ROWS - 1 ||
-      c === 0 ||
-      isInSnake(r, c)
-    ) {
+    if (!pointIsValid(r, c) || isInSnake(r, c)) {
       stopGame(Outcomes.lose)
     }
 
@@ -146,6 +173,10 @@ export default function App() {
           setDirQueue(p => [dir, ...p])
         }
   )
+
+  useEffect(() => {
+    keyboardSoundToggle()
+  }, [dirQueue])
 
   function isValidDirection(attempt) {
     let curDir = prevDir.current

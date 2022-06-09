@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { memo, useEffect, useRef, useState } from "react"
 
 export default function useAudio(url, timeout) {
   let [audio] = useState(new Audio(url))
@@ -10,20 +10,18 @@ export default function useAudio(url, timeout) {
     audio.currentTime = 0
     audio.play()
     if (timeout) {
-      id = setTimeout(() => audio.pause(), timeout)
+      id = setTimeout(() => playing && audio.pause(), timeout)
     }
   }
 
   useEffect(() => {
     playing ? play() : audio.pause()
+    return () => clearTimeout(id)
   }, [playing])
 
   useEffect(() => {
     audio.addEventListener("ended", () => setPlaying(false))
-    return () => {
-      audio.removeEventListener("ended", () => setPlaying(false))
-      clearTimeout(id)
-    }
+    return () => audio.removeEventListener("ended", () => setPlaying(false))
   }, [])
 
   return [playing, toggle]
